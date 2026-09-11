@@ -1,0 +1,13 @@
+# 本文件用于忽略训练生成物、本地数据和 Python 缓存。
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.env
+.env.*
+*.key
+*.pem
+data/
+outputs/
+logs/
+
