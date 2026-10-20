@@ -9,10 +9,12 @@ from typing import cast
 import torch
 from PIL import Image, UnidentifiedImageError
 
+from catdog_classifier.config import NsfwConfig
 from catdog_classifier.data import build_transforms
 from catdog_classifier.engine import TrainingCheckpoint, select_device
 from catdog_classifier.logging_utils import configure_logging
 from catdog_classifier.model import build_resnet18
+from catdog_classifier.nsfw import NsfwDetector, enforce_nsfw_gate
 
 
 @dataclass(frozen=True)
@@ -73,9 +75,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="预测单张图片是猫还是狗")
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--model", type=Path, default=Path("outputs/best_model.pt"))
+    parser.add_argument(
+        "--skip-nsfw-check", action="store_true", help="跳过不适宜内容前置门禁"
+    )
+    parser.add_argument(
+        "--nsfw-model", default="Falconsai/nsfw_image_detection", help="NSFW 模型 ID"
+    )
+    parser.add_argument("--nsfw-threshold", type=float, default=0.5, help="NSFW 判定阈值")
     arguments = parser.parse_args()
     logger = configure_logging("predict")
     try:
+        if not arguments.skip_nsfw_check:
+            nsfw_config = NsfwConfig(
+                model_id=arguments.nsfw_model, threshold=arguments.nsfw_threshold
+            )
+            detector = NsfwDetector.load(nsfw_config, logger)
+            verdict = enforce_nsfw_gate(arguments.image, detector)
+            logger.info(
+                "NSFW 门禁通过：%s（NSFW 概率 %.2f%%）",
+                verdict.label,
+                verdict.nsfw_score * 100,
+            )
         prediction = predict_image(arguments.image, arguments.model)
         logger.info(
             "预测结果：%s，置信度 %.2f%%", prediction.label, prediction.confidence * 100

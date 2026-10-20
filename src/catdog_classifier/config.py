@@ -34,3 +34,17 @@ class TrainConfig:
         if self.num_workers < 0:
             raise ValueError("num_workers 不能为负数")
 
+
+@dataclass(frozen=True)
+class NsfwConfig:
+    """推理前置门禁使用的 NSFW 模型与阈值配置。"""
+
+    model_id: str = "Falconsai/nsfw_image_detection"
+    threshold: float = 0.5
+
+    def validate(self) -> None:
+        if not self.model_id.strip():
+            raise ValueError("model_id 不能为空")
+        if not 0 < self.threshold < 1:
+            raise ValueError("threshold 必须位于 0 和 1 之间")
+
